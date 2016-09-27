@@ -31,6 +31,22 @@ for CONTAINER in `/usr/bin/docker ps | awk '{print $1}' | grep -v CONTAINER`; do
 done
 BODY=`echo $BODY "]}"`
 
+#TBC
+#REMOTE_DOCKER_COMMAND="/sbin/ifconfig eth0 |grep \"inet addr\" | awk \'{print $2}\' | cut -d: -f2"
+#REMOTE_DOCKER_IP="`ssh root@$REMOTE_DOCKER_HOST  $REMOTE_DOCKER_COMMAND`
+#echo "Remote Docker IP = $REMOTE_DOCKER_IP"
+
+for CONTAINER in `ssh root@$REMOTE_DOCKER_HOST /usr/bin/docker ps | awk '{print $1}' | grep -v CONTAINER`; do
+  #echo "Remote Container - $CONTAINER"
+  HAS_MEMBERS=true
+  REMOTE_CONTAINER_NAT_PORT=`ssh root@$REMOTE_DOCKER_HOST /usr/bin/docker inspect $CONTAINER | grep HostPort | tail -1 |cut -d: -f2 | tr -d '"'| tr -d " "`
+  echo "Remote Pool member = $REMOTE_DOCKER_HOST:$REMOTE_CONTAINER_NAT_PORT"
+  BODY=`echo $BODY "{\"name\":\"$REMOTE_DOCKER_HOST:$REMOTE_CONTAINER_NAT_PORT\",\"address\":\"$REMOTE_DOCKER_HOST\",\"monitor\":\"\/Common\/tcp\"}"`
+done
+
+BODY=`echo $BODY "]}"`
+
+
 if [ $HAS_MEMBERS ]; then
   curl -s -k -H "Content-Type: application/json" -X PUT -d "$BODY" $BIGIP_URL_BASE/mgmt/tm/ltm/pool/$BIGIP_TARGET_POOL
   echo "Body - $BODY"
